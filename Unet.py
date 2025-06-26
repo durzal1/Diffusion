@@ -50,9 +50,11 @@ class Down(nn.Module):
 class Up(nn.Module):
 
     def __init__(self, in_channels, out_channels, embedding_dimension):
-        self. up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        super().__init__()
+
+        self.up = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
         self.conv = nn.Sequential(
-            DoubleConv(in_channels, out_channels, False),
+            DoubleConv(in_channels*2, out_channels, False),
             DoubleConv(out_channels, out_channels, True)
 
             # This is what YTber does
@@ -105,11 +107,11 @@ class Unet(nn.Module):
 
         self.double1 = DoubleConv(input_channels, 64)
         self.down1 = Down(64, 128, time_dim)
-        self.sa1 = SelfAttention(128, 32)
+        self.sa1 = SelfAttention(128, 16)
         self.down2 = Down(128, 256, time_dim)
-        self.sa2 = SelfAttention(256, 64)
+        self.sa2 = SelfAttention(256, 8)
         self.down3 = Down(256, 256, time_dim)
-        self.sa3 = SelfAttention(256,8)
+        self.sa3 = SelfAttention(256,4)
 
         self.bottle = nn.Sequential(
             DoubleConv(256, 512),
@@ -118,11 +120,11 @@ class Unet(nn.Module):
         )
 
         self.up1 = Up(256, 128, time_dim)
-        self.sa4 = SelfAttention(128, 16)
-        self.up2 = Up(256, 64, time_dim)
-        self.sa5 = SelfAttention(64, 32)
-        self.up3 = Up(128, 64, time_dim)
-        self.sa6 = SelfAttention(64, 64)
+        self.sa4 = SelfAttention(128, 8)
+        self.up2 = Up(128, 64, time_dim)
+        self.sa5 = SelfAttention(64, 16)
+        self.up3 = Up(64, 64, time_dim)
+        self.sa6 = SelfAttention(64, 32)
         self.out = nn.Conv2d(64, output_channels, kernel_size=1)
 
     def pos_encoding(self, t, channels):
@@ -137,8 +139,11 @@ class Unet(nn.Module):
 
 
     def forward(self,x,t):
+        # x is shape [batch, 1, height, width]
+        # t is shape [batch,
 
         # Positionally encode everything
+        t = t.unsqueeze(-1).type(torch.float)
         pos_encoding = self.pos_encoding(t, self.time_dim)
 
         # Downscale
@@ -171,12 +176,16 @@ class Unet(nn.Module):
 
 
 batch = 16
-height = 28
-width = 28
+height = 32
+width = 32
 embedding_dimension = 64
+device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
-tensor = torch.randn(batch, height,width)
+tensor = torch.randn(batch, 1, height,width).to(device)
 print(tensor)
-
-new_tesnor = Unet(tensor)
-print(new_tesnor)
+t = tensor.new_tensor([500] * tensor.shape[0]).long().to(device)
+model = Unet(1,10,embedding_dimension,device).to(device)
+new_tensor = model(tensor,t)
+print(new_tensor)
+print(tensor.shape)
+print(new_tensor.shape)
