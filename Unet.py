@@ -57,7 +57,7 @@ class Up(nn.Module):
             DoubleConv(in_channels*2, out_channels, False),
             DoubleConv(out_channels, out_channels, True)
 
-            # This is what YTber does
+        
             # DoubleConv(in_channels, in_channels, True),
             # DoubleConv(in_channels, out_channels, False)
         )
